@@ -1,6 +1,7 @@
 #define PIN_LATCH 8 //74HC595 Pin 12 ST_CP (Latch) connected to Arduino D8
 #define PIN_CLOCK 12 //74HC595 Pin 11 SH_CP (clock) connected to Arduino D12
 #define PIN_DATA 11 //74HC595 Pin 14 DS (data) connected to Arduino D11
+#define PIN_ENABLE 9 //74HC595 Pin 13 OE (output enable) connected to Arduino D9
 
 #define PIN_BUTTON A0
 #define PIN_LED A1
@@ -23,6 +24,10 @@ void setup() {
   pinMode(PIN_LATCH, OUTPUT);
   pinMode(PIN_CLOCK, OUTPUT);
   pinMode(PIN_DATA, OUTPUT);
+  pinMode(PIN_ENABLE, OUTPUT);
+  digitalWrite(PIN_ENABLE, HIGH); //disable shift register outputs
+  switchOffAllRelais(); //TODO: assume maximum cards connected
+  digitalWrite(PIN_ENABLE, LOW); //enable outputs
 
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_LED, OUTPUT); digitalWrite(PIN_LED, HIGH);
@@ -35,7 +40,7 @@ void setup() {
   
   Serial.begin(9600);
 
-  switchOffAllRelais();
+  
   
   digitalWrite(PIN_LED, LOW);
   digitalWrite(LED_BUILTIN, LOW);
