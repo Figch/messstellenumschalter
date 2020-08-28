@@ -6,6 +6,8 @@
 #define PIN_BUTTON A0
 #define PIN_LED A1
 
+#define PIN_TRIGGER 10 //Trigger Signal Output. Arduino Pin D2
+
 #define PIN_DIP1 7
 #define PIN_DIP2 6
 #define PIN_DIP3 5
@@ -15,12 +17,21 @@ unsigned long last_button_down = 0;
 #define BUTTON_DEBOUNCETIME 200
 
 byte data;
-#define ARRAYSIZE 2
+#define ARRAYSIZE 8 //set to maximum possible relais modules. One array covers 8 channels.
 byte dataArray[ARRAYSIZE];
-
+ 
 uint16_t selectedOutput=0;
 
+#define TRIGGER_ACTIVE HIGH
+
+
+uint8_t mode = 0; // 0=idle, 1=running, 2=output test
+boolean buttonFlag;
+
+uint16_t testcycles = 0; //for test mode
+
 void setup() {
+  //Initialize Inputs and Outputs and set default startup values
   pinMode(PIN_LATCH, OUTPUT);
   pinMode(PIN_CLOCK, OUTPUT);
   pinMode(PIN_DATA, OUTPUT);
@@ -28,6 +39,8 @@ void setup() {
   digitalWrite(PIN_ENABLE, HIGH); //disable shift register outputs
   switchOffAllRelais(); //TODO: assume maximum cards connected
   digitalWrite(PIN_ENABLE, LOW); //enable outputs
+
+  pinMode(PIN_TRIGGER, OUTPUT); digitalWrite(PIN_TRIGGER, !TRIGGER_ACTIVE); //Initialize Trigger Output
 
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_LED, OUTPUT); digitalWrite(PIN_LED, HIGH);
@@ -39,48 +52,141 @@ void setup() {
   pinMode(PIN_DIP4, INPUT_PULLUP);
   
   Serial.begin(9600);
+  Serial.println("Booting");
+  Serial.print("DIP=");
+  Serial.print(digitalRead(PIN_DIP1));
+  Serial.print(digitalRead(PIN_DIP2));
+  Serial.print(digitalRead(PIN_DIP3));
+  Serial.println(digitalRead(PIN_DIP4));
 
   
   
   digitalWrite(PIN_LED, LOW);
   digitalWrite(LED_BUILTIN, LOW);
+
+  if (!digitalRead(PIN_BUTTON)) { //button pressed on boot
+    mode=2; //set test mode
+    Serial.println("TESTMODE");
+  }
 }
 
 void loop() {
 
-  boolean buttonFlag = false;
+  buttonFlag = false;
   if (!digitalRead(PIN_BUTTON)) { //button pressed
-    digitalWrite(PIN_LED, HIGH);
+    digitalWrite(PIN_LED, HIGH); //led on
     if (millis() - last_button_down > BUTTON_DEBOUNCETIME) {
       buttonFlag = true;
     }
     last_button_down=millis();
   }
   else {
-    digitalWrite(PIN_LED, LOW);
+    digitalWrite(PIN_LED, LOW); //led off
+  }
+
+  switch(mode) {
+    case 0:
+      break;
+    case 1:
+      break;
+    case 2: //Output Test
+      loopTest();
+      break;
   }
 
   if (buttonFlag) {
     Serial.println("Button!");
-    Serial.println(digitalRead(PIN_DIP1));
-    Serial.println(digitalRead(PIN_DIP2));
-    Serial.println(digitalRead(PIN_DIP3));
-    Serial.println(digitalRead(PIN_DIP4));
+    
   }
   
 
   
-  Serial.print("output="); Serial.println(selectedOutput);
-  selectRelais(selectedOutput);
-  Serial.println(dataArray[0], BIN);
-  Serial.println(dataArray[1], BIN);
-  delay(100);
-
-  selectedOutput++,
-  selectedOutput = selectedOutput % 16;
 
   
   
+}
+
+
+void loopTest()
+{
+  Serial.print("Testcycle="); Serial.println(testcycles);
+  Serial.print("DIP=");
+  Serial.print(digitalRead(PIN_DIP1));
+  Serial.print(digitalRead(PIN_DIP2));
+  Serial.print(digitalRead(PIN_DIP3));
+  Serial.println(digitalRead(PIN_DIP4));
+
+  delay(500);
+  Serial.println();
+  Serial.println("button test...");
+  delay(1000);
+
+  if (buttonFlag) {
+    Serial.println("Button Pressed");
+  }else{
+    Serial.println("Button Not Pressed");
+  }
+
+  
+  Serial.println();
+  delay(500);
+  Serial.println("Testing LED_BUILTIN");
+  delay(1000);
+  Serial.println("LED_BUILTIN Off");
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(1000);
+  Serial.println("LED_BUILTIN On");
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(1000);
+  Serial.println("LED_BUILTIN Off");
+  digitalWrite(LED_BUILTIN, LOW);
+
+  Serial.println();
+  delay(500);
+  Serial.println("Testing LED");
+  delay(1000);
+  Serial.println("LED Off");
+  digitalWrite(PIN_LED, LOW);
+  delay(1000);
+  Serial.println("LED On");
+  digitalWrite(PIN_LED, HIGH);
+  delay(1000);
+  Serial.println("LED Off");
+  digitalWrite(PIN_LED, LOW);
+
+  Serial.println();
+  delay(500);
+  Serial.println("Testing Trigger");
+  Serial.print("Trigger is set to active "); Serial.println((TRIGGER_ACTIVE ? "HIGH" : "LOW"));
+  delay(1000);
+  Serial.println("Trigger Off");
+  digitalWrite(PIN_TRIGGER, !TRIGGER_ACTIVE);
+  delay(1000);
+  Serial.println("Trigger Active");
+  digitalWrite(PIN_TRIGGER, TRIGGER_ACTIVE);
+  delay(1000);
+  Serial.println("Trigger Off");
+  digitalWrite(PIN_TRIGGER, !TRIGGER_ACTIVE);
+
+  delay(500);
+  Serial.println();
+  Serial.print("Testing "); Serial.print(ARRAYSIZE*8); Serial.println(" outputs...");
+
+  delay(1000);
+
+  for (uint16_t _output=0; _output<(ARRAYSIZE*8);_output++) {
+    Serial.print("output="); Serial.print(_output); Serial.print(" / "); Serial.println((ARRAYSIZE*8));
+    selectRelais(_output);
+    for (uint8_t i=0;i<ARRAYSIZE; i++) {
+      Serial.println(dataArray[i], BIN);
+    }
+    delay(1000);
+  }
+  Serial.println("All outputs off");
+  switchOffAllRelais();
+  Serial.println();
+
+  testcycles++;
 }
 
 void switchOffAllRelais() {
