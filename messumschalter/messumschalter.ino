@@ -1,3 +1,26 @@
+//##################################
+//#### USER CONFIGURABLE VALUES ####
+//##################################
+
+//Each Intervalcycle all outputs will be switched consecutively
+#define INTERVALCYCLE_0 1*60 //  Seconds. 00 / DIP 1=Off, DIP 2=Off
+#define INTERVALCYCLE_1 10*60 // Seconds. 01 / DIP 1=Off, DIP 2=On
+#define INTERVALCYCLE_2 30*60 // Seconds. 10 / DIP 1=On, DIP 2=Off
+#define INTERVALCYCLE_3 60*60 // Seconds. 11 / DIP 1=On, DIP 2=On
+
+#define OUTPUT_ON_TIME 10 //Seconds. How long each individual output stays on
+#define TRIGGER_DELAY 1 //Seconds. Delay for trigger output after output activation
+#define TRIGGER_ON_TIME 0.5 //Seconds. Length of the trigger pulse. Should be lower than OUTPUT_ON_TIME-TRIGGER_DELAY
+#define OUTPUT_DELAY 2 //Seconds. Off time between output activations
+
+#define TRIGGER_ACTIVE HIGH //Trigger output Active HIGH or Active LOW
+
+//############################
+//#### END OF USER VALUES ####
+//############################
+
+
+
 #define PIN_LATCH 8 //74HC595 Pin 12 ST_CP (Latch) connected to Arduino D8
 #define PIN_CLOCK 12 //74HC595 Pin 11 SH_CP (clock) connected to Arduino D12
 #define PIN_DATA 11 //74HC595 Pin 14 DS (data) connected to Arduino D11
@@ -21,28 +44,15 @@ byte data;
 byte dataArray[ARRAYSIZE];
 uint8_t outputcount=10; //user configurable number of used outputs
 
-//Each Intervalcycle all outputs will be switched consecutively
+
 unsigned long intervalcycletime=1; //interval in seconds. maximum is 65535 seconds = 18 hours
-#define INTERVALCYCLE_0 1*60 //  Seconds. 00 / DIP 1=Off, DIP 2=Off
-#define INTERVALCYCLE_1 10*60 // Seconds. 01 / DIP 1=Off, DIP 2=On
-#define INTERVALCYCLE_2 30*60 // Seconds. 10 / DIP 1=On, DIP 2=Off
-#define INTERVALCYCLE_3 60*60 // Seconds. 11 / DIP 1=On, DIP 2=On
 
-#define OUTPUT_ON_TIME 10 //Seconds. How long each individual output stays on
-
-#define TRIGGER_DELAY 1 //Seconds. Delay for trigger output after output activation
-
-#define TRIGGER_ON_TIME 0.5 //Seconds. Length of the trigger pulse. Should be lower than OUTPUT_ON_TIME-TRIGGER_DELAY
-
-#define OUTPUT_DELAY 2 //Seconds. Off time between output activations
  
 uint16_t selectedOutput=0;
 
 uint16_t cyclecount = 0; //just a counter
 unsigned long lastCycleStart=0;
 boolean firstRun=true;
-
-#define TRIGGER_ACTIVE HIGH
 
 
 uint8_t mode = 0; // 0=idle, 1=running, 2=output test
