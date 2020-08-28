@@ -204,7 +204,6 @@ void loopRun()
       digitalWrite(PIN_LED, LOW); //LED Off
   
       delay(OUTPUT_DELAY*1000); //off time
-      Serial.print(millis() - lastCycleStart); Serial.print(" > "); Serial.println(intervalcycletime*1000);
     }
     cyclecount++;
   }
