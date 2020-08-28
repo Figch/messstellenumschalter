@@ -15,6 +15,8 @@
 
 #define TRIGGER_ACTIVE HIGH //Trigger output Active HIGH or Active LOW
 
+#define DUALOUTPUT true //use two relais as one output
+
 //############################
 //#### END OF USER VALUES ####
 //############################
@@ -43,6 +45,7 @@ byte data;
 #define ARRAYSIZE 8 //set to maximum possible relais modules. One array covers 8 channels.
 byte dataArray[ARRAYSIZE];
 uint8_t outputcount=10; //user configurable number of used outputs
+
 
 
 unsigned long intervalcycletime=1; //interval in seconds. maximum is 65535 seconds = 18 hours
@@ -94,7 +97,13 @@ void setup() {
   digitalWrite(PIN_LED, LOW);
   digitalWrite(LED_BUILTIN, LOW);
 
+  
+  if (DUALOUTPUT) {
+    outputcount*=2;
+    Serial.println("Dualoutput enabled");
+  }
   Serial.print("Configured to use "); Serial.print(outputcount); Serial.println(" outputs.");
+  
   Serial.println("Timing configuration:");
   Serial.print("OUTPUT_ON_TIME="); Serial.print(OUTPUT_ON_TIME); Serial.println(" s");
   Serial.print("TRIGGER_DELAY="); Serial.print(TRIGGER_DELAY); Serial.println(" s");
@@ -199,7 +208,7 @@ void loopRun()
     digitalWrite(PIN_LED, LOW); //led off
     lastCycleStart = millis();
     
-    for (selectedOutput=0; selectedOutput<outputcount;selectedOutput++) { //go through all outputs
+    for (selectedOutput=0; selectedOutput<outputcount;selectedOutput+= (DUALOUTPUT ? 2 : 1)) { //go through all outputs
       Serial.print("output="); Serial.print(selectedOutput); Serial.print(" / "); Serial.println(outputcount);
       selectOutput(selectedOutput);
       digitalWrite(PIN_LED, HIGH); //LED On
@@ -315,7 +324,16 @@ void selectOutput(uint16_t n) {
   }
   uint8_t byteIndex = n/8; //calculate byte
   dataArray[byteIndex] = ~(1<<(n%8)); //bit index at calculated byte
+
+  
+  if (DUALOUTPUT) { //switch on next output too
+    uint8_t byteIndex = (n+1)/8; //calculate byte
+    dataArray[byteIndex] &= ~(1<<((n+1)%8)); //bit index at calculated byte  
+  }
+  
   updateShiftregister();
+
+  
 }
 
 void updateShiftregister() { //shift data from array to shiftregisters which activate the corresponding relais
