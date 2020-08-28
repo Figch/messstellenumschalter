@@ -19,8 +19,28 @@ unsigned long last_button_down = 0;
 byte data;
 #define ARRAYSIZE 8 //set to maximum possible relais modules. One array covers 8 channels.
 byte dataArray[ARRAYSIZE];
+uint8_t outputcount=10; //user configurable number of used outputs
+
+//Each Intervalcycle all outputs will be switched consecutively
+unsigned long intervalcycletime=1; //interval in seconds. maximum is 65535 seconds = 18 hours
+#define INTERVALCYCLE_0 1*60 //  Seconds. 00 / DIP 1=Off, DIP 2=Off
+#define INTERVALCYCLE_1 10*60 // Seconds. 01 / DIP 1=Off, DIP 2=On
+#define INTERVALCYCLE_2 30*60 // Seconds. 10 / DIP 1=On, DIP 2=Off
+#define INTERVALCYCLE_3 60*60 // Seconds. 11 / DIP 1=On, DIP 2=On
+
+#define OUTPUT_ON_TIME 10 //Seconds. How long each individual output stays on
+
+#define TRIGGER_DELAY 1 //Seconds. Delay for trigger output after output activation
+
+#define TRIGGER_ON_TIME 0.5 //Seconds. Length of the trigger pulse. Should be lower than OUTPUT_ON_TIME-TRIGGER_DELAY
+
+#define OUTPUT_DELAY 2 //Seconds. Off time between output activations
  
 uint16_t selectedOutput=0;
+
+uint16_t cyclecount = 0; //just a counter
+unsigned long lastCycleStart=0;
+boolean firstRun=true;
 
 #define TRIGGER_ACTIVE HIGH
 
@@ -37,7 +57,7 @@ void setup() {
   pinMode(PIN_DATA, OUTPUT);
   pinMode(PIN_ENABLE, OUTPUT);
   digitalWrite(PIN_ENABLE, HIGH); //disable shift register outputs
-  switchOffAllRelais(); //TODO: assume maximum cards connected
+  switchOffAllOutputs(); //TODO: assume maximum cards connected
   digitalWrite(PIN_ENABLE, LOW); //enable outputs
 
   pinMode(PIN_TRIGGER, OUTPUT); digitalWrite(PIN_TRIGGER, !TRIGGER_ACTIVE); //Initialize Trigger Output
@@ -64,6 +84,13 @@ void setup() {
   digitalWrite(PIN_LED, LOW);
   digitalWrite(LED_BUILTIN, LOW);
 
+  Serial.print("Configured to use "); Serial.print(outputcount); Serial.println(" outputs.");
+  Serial.println("Timing configuration:");
+Serial.print("OUTPUT_ON_TIME="); Serial.print(OUTPUT_ON_TIME); Serial.println(" s");
+Serial.print("TRIGGER_DELAY="); Serial.print(TRIGGER_DELAY); Serial.println(" s");
+Serial.print("TRIGGER_ON_TIME="); Serial.print(TRIGGER_ON_TIME); Serial.println(" s");
+Serial.print("OUTPUT_DELAY="); Serial.print(OUTPUT_DELAY); Serial.println(" s");
+
   if (!digitalRead(PIN_BUTTON)) { //button pressed on boot
     mode=2; //set test mode
     Serial.println("TESTMODE");
@@ -86,24 +113,99 @@ void loop() {
 
   switch(mode) {
     case 0:
+      loopIdle();
       break;
     case 1:
+      loopRun();
       break;
     case 2: //Output Test
       loopTest();
       break;
   }
+  
+}
 
-  if (buttonFlag) {
-    Serial.println("Button!");
+void loopIdle()
+{
+  if (buttonFlag) { //button pressed
+    //Read DIP switches
+    Serial.print("DIP=");
+    Serial.print(digitalRead(PIN_DIP1));
+    Serial.print(digitalRead(PIN_DIP2));
+    Serial.print(digitalRead(PIN_DIP3));
+    Serial.println(digitalRead(PIN_DIP4));
+
+    uint8_t intervalsel = !digitalRead(PIN_DIP2) + !digitalRead(PIN_DIP1)*2;
+    Serial.print("interval selection = "); Serial.println(intervalsel);
+    switch(intervalsel) {
+      case 0:
+        intervalcycletime=INTERVALCYCLE_0;
+        break;
+      case 1:
+        intervalcycletime=INTERVALCYCLE_1;
+        break;
+      case 2:
+        intervalcycletime=INTERVALCYCLE_2;
+        break;
+      case 3:
+        intervalcycletime=INTERVALCYCLE_3;
+        break;
+    }
+    Serial.print("intervalcycletime = "); Serial.println(intervalcycletime); Serial.println(" seconds");
     
+    
+    mode=1;
+    firstRun=true;
+    switchOffAllOutputs(); //for extra safety
+    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(PIN_LED, LOW);
+    digitalWrite(PIN_TRIGGER, !TRIGGER_ACTIVE); //Off
+    Serial.println("Starting Run Mode");
+    delay(1000); //wait a bit
+
+    if (intervalcycletime<=outputcount*(OUTPUT_ON_TIME+OUTPUT_DELAY)) { //cycletime not long enough to go through all outputs?
+      Serial.println("Error: Intervalcycletime too short for all outputs!");
+      Serial.print("Should be at least "); Serial.print(outputcount*(OUTPUT_ON_TIME+OUTPUT_DELAY)); Serial.println(" Seconds");
+      Serial.print("Current Intervalcycletime is "); Serial.print(intervalcycletime); Serial.println(" seconds");
+      mode=0; //Do not start run mode
+      for (uint8_t i=0;i<20; i++){
+        digitalWrite(LED_BUILTIN, i%2==0); //fast blinking
+        delay(200);
+      }
+    }
   }
-  
+}
 
-  
+void loopRun()
+{
+  digitalWrite(PIN_LED, ((millis()/1000)%2==0 ? HIGH : LOW)); //Slowly blink led to show waiting
 
+  if (millis() - lastCycleStart > intervalcycletime*1000 || firstRun) //wait until new cycle starts
+  {
+    firstRun=false;
+    Serial.print("Starting cycle "); Serial.println(cyclecount);
+    digitalWrite(PIN_LED, LOW); //led off
+    lastCycleStart = millis();
+    
+    for (selectedOutput=0; selectedOutput<outputcount;selectedOutput++) { //go through all outputs
+      Serial.print("output="); Serial.print(selectedOutput); Serial.print(" / "); Serial.println(outputcount);
+      selectOutput(selectedOutput);
+      digitalWrite(PIN_LED, HIGH); //LED On
+      delay(TRIGGER_DELAY*1000);
+      digitalWrite(PIN_TRIGGER, TRIGGER_ACTIVE); //On
+      digitalWrite(LED_BUILTIN, HIGH); //visual indicator
+      delay(TRIGGER_ON_TIME*1000);
+      digitalWrite(PIN_TRIGGER, !TRIGGER_ACTIVE); //Off
+      digitalWrite(LED_BUILTIN, LOW);
+      delay((OUTPUT_ON_TIME-TRIGGER_ON_TIME-TRIGGER_DELAY)*1000); //wait until turn off
+      switchOffAllOutputs(); //all off
+      digitalWrite(PIN_LED, LOW); //LED Off
   
-  
+      delay(OUTPUT_DELAY*1000); //off time
+      Serial.print(millis() - lastCycleStart); Serial.print(" > "); Serial.println(intervalcycletime*1000);
+    }
+    cyclecount++;
+  }
 }
 
 
@@ -176,27 +278,27 @@ void loopTest()
 
   for (uint16_t _output=0; _output<(ARRAYSIZE*8);_output++) {
     Serial.print("output="); Serial.print(_output); Serial.print(" / "); Serial.println((ARRAYSIZE*8));
-    selectRelais(_output);
+    selectOutput(_output);
     for (uint8_t i=0;i<ARRAYSIZE; i++) {
       Serial.println(dataArray[i], BIN);
     }
     delay(1000);
   }
   Serial.println("All outputs off");
-  switchOffAllRelais();
+  switchOffAllOutputs();
   Serial.println();
 
   testcycles++;
 }
 
-void switchOffAllRelais() {
+void switchOffAllOutputs() {
   for (int j = 0; j < ARRAYSIZE; j++) { //for every byte
     dataArray[j]=0xFF; //reset. Active Low
   }
   updateShiftregister();
 }
 
-void selectRelais(uint16_t n) {
+void selectOutput(uint16_t n) {
   for (int j = 0; j < ARRAYSIZE; j++) { //for every byte
     dataArray[j]=0xFF; //reset. Active Low
   }
