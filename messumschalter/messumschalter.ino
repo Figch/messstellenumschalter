@@ -86,15 +86,17 @@ void setup() {
 
   Serial.print("Configured to use "); Serial.print(outputcount); Serial.println(" outputs.");
   Serial.println("Timing configuration:");
-Serial.print("OUTPUT_ON_TIME="); Serial.print(OUTPUT_ON_TIME); Serial.println(" s");
-Serial.print("TRIGGER_DELAY="); Serial.print(TRIGGER_DELAY); Serial.println(" s");
-Serial.print("TRIGGER_ON_TIME="); Serial.print(TRIGGER_ON_TIME); Serial.println(" s");
-Serial.print("OUTPUT_DELAY="); Serial.print(OUTPUT_DELAY); Serial.println(" s");
+  Serial.print("OUTPUT_ON_TIME="); Serial.print(OUTPUT_ON_TIME); Serial.println(" s");
+  Serial.print("TRIGGER_DELAY="); Serial.print(TRIGGER_DELAY); Serial.println(" s");
+  Serial.print("TRIGGER_ON_TIME="); Serial.print(TRIGGER_ON_TIME); Serial.println(" s");
+  Serial.print("OUTPUT_DELAY="); Serial.print(OUTPUT_DELAY); Serial.println(" s");
 
   if (!digitalRead(PIN_BUTTON)) { //button pressed on boot
     mode=2; //set test mode
     Serial.println("TESTMODE");
   }
+
+  Serial.println("Waiting for user to start cycle. Press Button!");
 }
 
 void loop() {
