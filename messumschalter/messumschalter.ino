@@ -175,6 +175,22 @@ void loopIdle()
         break;
     }
     Serial.print("intervalcycletime = "); Serial.print(intervalcycletime); Serial.println(" seconds");
+
+    
+    for (uint8_t x=0;x<10; x++) { //blink fast for some time
+      digitalWrite(LED_BUILTIN, HIGH); delay(25); digitalWrite(LED_BUILTIN, LOW); delay(25);
+    }
+    delay(1000-300);
+    //Blink Intervalselection number
+    for (uint8_t b=0;b<intervalsel; b++) {
+      delay(300);
+      digitalWrite(LED_BUILTIN, HIGH); delay(300); digitalWrite(LED_BUILTIN, LOW);
+    }
+    delay(1000);
+    
+    for (uint8_t x=0;x<10; x++) { //blink fast for some time
+      digitalWrite(LED_BUILTIN, HIGH); delay(25); digitalWrite(LED_BUILTIN, LOW); delay(25);
+    }
     
     
     mode=1;
