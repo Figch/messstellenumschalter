@@ -15,6 +15,7 @@
 
 #define TRIGGER_ACTIVE HIGH //Trigger output Active HIGH or Active LOW
 
+uint8_t outputcount=2; //How many outputs to use
 #define DUALOUTPUT true //use two relais as one output
 
 //############################
@@ -44,9 +45,9 @@ unsigned long last_button_down = 0;
 byte data;
 #define ARRAYSIZE 8 //set to maximum possible relais modules. One array covers 8 channels.
 byte dataArray[ARRAYSIZE];
-uint8_t outputcount=10; //user configurable number of used outputs
 
 
+#define INFOINTERVAL 60 //Seconds. In run mode, how much time between time info messages when waiting
 
 unsigned long intervalcycletime=1; //interval in seconds. maximum is 65535 seconds = 18 hours
 
@@ -56,6 +57,7 @@ uint16_t selectedOutput=0;
 uint16_t cyclecount = 0; //just a counter
 unsigned long lastCycleStart=0;
 boolean firstRun=true;
+unsigned long lastInfo=0;
 
 
 uint8_t mode = 0; // 0=idle, 1=running, 2=output test
@@ -172,7 +174,7 @@ void loopIdle()
         intervalcycletime=INTERVALCYCLE_3;
         break;
     }
-    Serial.print("intervalcycletime = "); Serial.println(intervalcycletime); Serial.println(" seconds");
+    Serial.print("intervalcycletime = "); Serial.print(intervalcycletime); Serial.println(" seconds");
     
     
     mode=1;
@@ -184,9 +186,9 @@ void loopIdle()
     Serial.println("Starting Run Mode");
     delay(1000); //wait a bit
 
-    if (intervalcycletime<=outputcount*(OUTPUT_ON_TIME+OUTPUT_DELAY)) { //cycletime not long enough to go through all outputs?
+    if (intervalcycletime<= (outputcount/ ( DUALOUTPUT ? 2 : 1) )*(OUTPUT_ON_TIME+OUTPUT_DELAY)) { //cycletime not long enough to go through all outputs?
       Serial.println("Error: Intervalcycletime too short for all outputs!");
-      Serial.print("Should be at least "); Serial.print(outputcount*(OUTPUT_ON_TIME+OUTPUT_DELAY)); Serial.println(" Seconds");
+      Serial.print("Should be at least "); Serial.print((outputcount/ ( DUALOUTPUT ? 2 : 1) )*(OUTPUT_ON_TIME+OUTPUT_DELAY)); Serial.println(" Seconds");
       Serial.print("Current Intervalcycletime is "); Serial.print(intervalcycletime); Serial.println(" seconds");
       mode=0; //Do not start run mode
       for (uint8_t i=0;i<20; i++){
@@ -200,8 +202,14 @@ void loopIdle()
 void loopRun()
 {
   digitalWrite(PIN_LED, ((millis()/1000)%2==0 ? HIGH : LOW)); //Slowly blink led to show waiting
+  
+  if (millis() - lastInfo > INFOINTERVAL*(unsigned long)1000) //wait until new cycle starts
+  {
+    Serial.print("Info: Waiting "); Serial.print((intervalcycletime*(unsigned long)1000 - (millis() - lastCycleStart))/1000 ); Serial.println(" s for next cycle");
+    lastInfo=millis();
+  }
 
-  if (millis() - lastCycleStart > intervalcycletime*1000 || firstRun) //wait until new cycle starts
+  if (millis() - lastCycleStart > intervalcycletime*(unsigned long)1000 || firstRun) //wait until new cycle starts
   {
     firstRun=false;
     Serial.print("Starting cycle "); Serial.println(cyclecount);
@@ -209,20 +217,24 @@ void loopRun()
     lastCycleStart = millis();
     
     for (selectedOutput=0; selectedOutput<outputcount;selectedOutput+= (DUALOUTPUT ? 2 : 1)) { //go through all outputs
-      Serial.print("output="); Serial.print(selectedOutput); Serial.print(" / "); Serial.println(outputcount);
+      Serial.print("output="); Serial.print(selectedOutput); 
+      if (DUALOUTPUT) { Serial.print(","); Serial.print(selectedOutput+1); }
+      Serial.print(" / "); Serial.println(outputcount-1);
+      
       selectOutput(selectedOutput);
       digitalWrite(PIN_LED, HIGH); //LED On
-      delay(TRIGGER_DELAY*1000);
+      delay(TRIGGER_DELAY*(unsigned long)1000);
       digitalWrite(PIN_TRIGGER, TRIGGER_ACTIVE); //On
       digitalWrite(LED_BUILTIN, HIGH); //visual indicator
-      delay(TRIGGER_ON_TIME*1000);
+      delay(TRIGGER_ON_TIME*(unsigned long)1000);
       digitalWrite(PIN_TRIGGER, !TRIGGER_ACTIVE); //Off
       digitalWrite(LED_BUILTIN, LOW);
-      delay((OUTPUT_ON_TIME-TRIGGER_ON_TIME-TRIGGER_DELAY)*1000); //wait until turn off
+      delay((OUTPUT_ON_TIME-TRIGGER_ON_TIME-TRIGGER_DELAY)*(unsigned long)1000); //wait until turn off
       switchOffAllOutputs(); //all off
       digitalWrite(PIN_LED, LOW); //LED Off
   
-      delay(OUTPUT_DELAY*1000); //off time
+      delay(OUTPUT_DELAY*(unsigned long)1000); //off time
+      lastInfo=0; //force immediate info print
     }
     cyclecount++;
   }
