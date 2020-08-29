@@ -16,7 +16,7 @@
 #define TRIGGER_ACTIVE HIGH //Trigger output Active HIGH or Active LOW
 
 uint8_t outputcount=2; //How many outputs to use
-#define DUALOUTPUT true //use two relais as one output
+boolean dualoutput=true; //use two relais as one output
 
 //############################
 //#### END OF USER VALUES ####
@@ -100,7 +100,7 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);
 
   
-  if (DUALOUTPUT) {
+  if (dualoutput) {
     outputcount*=2;
     Serial.println("Dualoutput enabled");
   }
@@ -186,9 +186,9 @@ void loopIdle()
     Serial.println("Starting Run Mode");
     delay(1000); //wait a bit
 
-    if (intervalcycletime<= (outputcount/ ( DUALOUTPUT ? 2 : 1) )*(OUTPUT_ON_TIME+OUTPUT_DELAY)) { //cycletime not long enough to go through all outputs?
+    if (intervalcycletime<= (outputcount/ ( dualoutput ? 2 : 1) )*(OUTPUT_ON_TIME+OUTPUT_DELAY)) { //cycletime not long enough to go through all outputs?
       Serial.println("Error: Intervalcycletime too short for all outputs!");
-      Serial.print("Should be at least "); Serial.print((outputcount/ ( DUALOUTPUT ? 2 : 1) )*(OUTPUT_ON_TIME+OUTPUT_DELAY)); Serial.println(" Seconds");
+      Serial.print("Should be at least "); Serial.print((outputcount/ ( dualoutput ? 2 : 1) )*(OUTPUT_ON_TIME+OUTPUT_DELAY)); Serial.println(" Seconds");
       Serial.print("Current Intervalcycletime is "); Serial.print(intervalcycletime); Serial.println(" seconds");
       mode=0; //Do not start run mode
       for (uint8_t i=0;i<20; i++){
@@ -216,9 +216,9 @@ void loopRun()
     digitalWrite(PIN_LED, LOW); //led off
     lastCycleStart = millis();
     
-    for (selectedOutput=0; selectedOutput<outputcount;selectedOutput+= (DUALOUTPUT ? 2 : 1)) { //go through all outputs
+    for (selectedOutput=0; selectedOutput<outputcount;selectedOutput+= (dualoutput ? 2 : 1)) { //go through all outputs
       Serial.print("output="); Serial.print(selectedOutput); 
-      if (DUALOUTPUT) { Serial.print(","); Serial.print(selectedOutput+1); }
+      if (dualoutput) { Serial.print(","); Serial.print(selectedOutput+1); }
       Serial.print(" / "); Serial.println(outputcount-1);
       
       selectOutput(selectedOutput);
@@ -243,6 +243,9 @@ void loopRun()
 
 void loopTest()
 {
+  dualoutput=false; //test only single outputs
+  digitalWrite(PIN_LED, LOW); //led off, may be still on from button press
+  
   Serial.print("Testcycle="); Serial.println(testcycles);
   Serial.print("DIP=");
   Serial.print(digitalRead(PIN_DIP1));
@@ -255,7 +258,7 @@ void loopTest()
   Serial.println("button test...");
   delay(1000);
 
-  if (buttonFlag) {
+  if (!digitalRead(PIN_BUTTON)) {
     Serial.println("Button Pressed");
   }else{
     Serial.println("Button Not Pressed");
@@ -338,7 +341,7 @@ void selectOutput(uint16_t n) {
   dataArray[byteIndex] = ~(1<<(n%8)); //bit index at calculated byte
 
   
-  if (DUALOUTPUT) { //switch on next output too
+  if (dualoutput) { //switch on next output too
     uint8_t byteIndex = (n+1)/8; //calculate byte
     dataArray[byteIndex] &= ~(1<<((n+1)%8)); //bit index at calculated byte  
   }
