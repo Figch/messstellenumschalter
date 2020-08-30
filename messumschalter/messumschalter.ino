@@ -2,6 +2,8 @@
 //#### USER CONFIGURABLE VALUES ####
 //##################################
 
+//TODO: print out cycles on boot
+
 //Each Intervalcycle all outputs will be switched consecutively
 #define INTERVALCYCLE_0 1*60 //  Seconds. 00 / DIP 1=Off, DIP 2=Off
 #define INTERVALCYCLE_1 10*60 // Seconds. 01 / DIP 1=Off, DIP 2=On
@@ -15,8 +17,8 @@
 
 #define TRIGGER_ACTIVE HIGH //Trigger output Active HIGH or Active LOW
 
-uint8_t outputcount=2; //How many outputs to use
-boolean dualoutput=true; //use two relais as one output
+uint8_t outputcount=32; //How many outputs to use
+
 
 //############################
 //#### END OF USER VALUES ####
@@ -46,6 +48,7 @@ byte data;
 #define ARRAYSIZE 8 //set to maximum possible relais modules. One array covers 8 channels.
 byte dataArray[ARRAYSIZE];
 
+boolean dualoutput; //use two relais as one output. gets set by dip switch 4
 
 #define INFOINTERVAL 60 //Seconds. In run mode, how much time between time info messages when waiting
 
@@ -94,6 +97,8 @@ void setup() {
   Serial.print(digitalRead(PIN_DIP3));
   Serial.println(digitalRead(PIN_DIP4));
 
+
+  dualoutput=!digitalRead(PIN_DIP4);
   
   
   digitalWrite(PIN_LED, LOW);
